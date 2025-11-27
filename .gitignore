@@ -1,0 +1,13 @@
+data/geom/nut.STEP
+
+data/materials/*
+docs/external
+output/*
+log/*
+
+
+
+
+!*.gitkeep
+
+
