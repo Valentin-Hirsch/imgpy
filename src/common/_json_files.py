@@ -89,22 +89,25 @@ class CadQueryParamsJSON(typing.TypedDict):
         # --------------------------------------------------------------
 
         angular_tolerance: float  # TODO NonNegativeFloat?
-        r"""Parameter `angularTolerance` in `cadquery.Shape.exportStl()`."""
+        r"""Parameter `angularTolerance` in `cadquery.Workplane.export()`."""
 
         export_unit: cadquery.UnitLiterals
-        r"""Parameter `outputUnit` in `cadquery.exporters.export()`."""
+        r"""Parameter `outputUnit` in `cadquery.Workplane.export()`."""
 
         import_unit: cadquery.UnitLiterals
         r"""Parameter `unit` in `cadquery.importers.importStep()`."""
 
         internal_unit: cadquery.UnitLiterals
-        r"""Parameter `unit` in `cadquery.exporters.export()`."""
+        r"""Parameter `unit` in `cadquery.Workplane.export()`."""
 
-        opt: _CadQueryOptJSON
-        r"""Parameter `opt` in `cadquery.exporters.export()`."""
+        opt_3mf: dict[str, typing.Any]
+        r"""Parameter `opt` in `cadquery.Workplane.export()` for 3MF files."""
+
+        opt_stl: dict[str, typing.Any]
+        r"""Parameter `opt` in `cadquery.Workplane.export()` for STL files."""
 
         tolerance: float  # TODO NonNegativeFloat?
-        r"""Parameter `tolerance` in `cadquery.Shape.exportStl()`."""
+        r"""Parameter `tolerance` in `cadquery.Workplane.export()`."""
 
 
 # ======================================================================
