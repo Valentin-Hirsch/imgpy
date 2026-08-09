@@ -1,0 +1,15 @@
+# .gitignore
+
+!*.gitkeep
+
+.venv
+.vscode
+__pycache__
+
+workdir/*
+!workdir/.gitkeep
+
+_temp
+
+
+#<file:end>
