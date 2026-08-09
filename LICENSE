@@ -1,0 +1,14 @@
+License information
+-------------------
+
+Unless otherwise stated, the source code, data, and any other files of the
+project are licensed under the GNU General Public License, version 3 (GPLv3).
+
+The following parts of the project are distributed under different licenses:
+
+- data/blender/materials/plastic_blue.blend              Blendkit Royalty Free License
+- data/blender/materials/plastic_fdm_light_blue.blend    Blendkit Royalty Free License
+
+The complete license texts (where available) are provided in the LICENSES directory.
+
+<file:end>
