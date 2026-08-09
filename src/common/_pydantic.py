@@ -18,7 +18,7 @@ This module also defines the following annotated types:
 - :data:`PositiveFloat`
 - :data:`NonNegativeFloat`
 
-These types ... TODO
+These types can be used in Pydantic models to narrow down values.
 
 """
 

@@ -7,8 +7,6 @@ This package provides the following symbols:
 
 - :class:`CadQueryParamsJSON`
 - :class:`GmshParamsJSON`
-- :class:`RunInputFileJSON`
-- :class:`PostInputFileJSON`
 
 **Pydantic base classes:**
 
@@ -35,12 +33,7 @@ This package provides the following symbols:
 # IMPORTS
 # ======================================================================
 
-from ._json_files import (
-        CadQueryParamsJSON,
-        GmshParamsJSON,
-        PostInputFileJSON,
-        RenderInputFileJSON
-)
+from ._json_files import CadQueryParamsJSON, GmshParamsJSON
 from ._json_utils import load_json, save_json
 from ._pydantic import (
         FrozenBase,
@@ -60,8 +53,6 @@ from ._pydantic import (
 __all__ = [
         'CadQueryParamsJSON',
         'GmshParamsJSON',
-        'RenderInputFileJSON',
-        'PostInputFileJSON',
         'load_json',
         'save_json',
         'FrozenBase',

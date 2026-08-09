@@ -3,8 +3,6 @@ r"""JSON file structures.
 
 This module provides the following types:
 
-- :class:`RenderInputFileJSON`
-- :class:`PostInputFileJSON`
 - :class:`CadQueryParamsJSON`
 - :class:`GmshParamsJSON`
 
@@ -26,58 +24,8 @@ from ._pydantic import NonNegativeFloat
 
 
 # ======================================================================
-# RUN INPUT FILE
-# ======================================================================
-
-
-class RenderInputFileJSON(typing.TypedDict):
-        r"""Rendering job input file."""
-
-
-        # --------------------------------------------------------------
-        # ATTRIBUTES
-        # --------------------------------------------------------------
-
-        # TODO
-
-
-# ======================================================================
-# POST INPUT FILE
-# ======================================================================
-
-
-class PostInputFileJSON(typing.TypedDict):
-        r"""Post-processing job input file."""
-
-
-        # --------------------------------------------------------------
-        # ATTRIBUTES
-        # --------------------------------------------------------------
-
-        # TODO
-
-
-# ======================================================================
 # CADQUERY PARAMETERS FILE
 # ======================================================================
-
-
-class _CadQueryOptJSON(typing.TypedDict):
-        r"""Additional CadQuery meshing parameters."""
-
-
-        # --------------------------------------------------------------
-        # ATTRIBUTES
-        # --------------------------------------------------------------
-
-        ascii: bool
-        r"""Parameter `ascii` in `cadquery.Shape.exportStl()` via `opt`."""
-
-        parallel: bool
-        r"""Parameter `parallel` in `cadquery.Shape.exportStl()` via `opt`."""
-
-        relative: bool
-        r"""Parameter `relative` in `cadquery.Shape.exportStl()` via `opt`."""
 
 
 class CadQueryParamsJSON(typing.TypedDict):
@@ -154,8 +102,6 @@ class GmshParamsJSON(typing.TypedDict):
 # ======================================================================
 
 __all__ = [
-        'RenderInputFileJSON',
-        'PostInputFileJSON',
         'CadQueryParamsJSON',
         'GmshParamsJSON'
 ]

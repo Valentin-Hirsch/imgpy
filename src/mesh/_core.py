@@ -38,14 +38,19 @@ def mesh_file(
                 in_file (`pathlib.Path`):
                         CAD file.
                 mesh_engine (`typing.Literal['cadquery', 'gmsh']`):
-                        Meshing engine(default: `'cadquery'`).
+                        Meshing engine (default: `'cadquery'`).
                 out_file (`pathlib.Path | None`):
                         Output file (default: `None`).
+
+        Returns:
+                `pathlib.Path`:
+                        Output file.
 
         """
 
         if out_file is None:
                 ts = time.strftime(r'%Y%m%d%H%M%S')
+
                 out_file = config.work_dir / f'{ts}-mesh-{in_file.stem}.stl'
 
                 if out_file.exists():
