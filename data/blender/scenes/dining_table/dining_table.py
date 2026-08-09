@@ -19,13 +19,13 @@ import pydantic
 
 from src.common import PositiveInt, StrictFrozenBase
 from src.imgpy.blender import FileContext, bake_simulation
-from src.imgpy.models import JobInput, Location, LocationRange
-# (  # TODO
-#         Location,
-#         LocationRange,
-#         PanelLight,
-#         RunConfig
-# )
+from src.imgpy.models import (
+        AreaLight,
+        JobInput,
+        Location,
+        LocationRange,
+        SpotLight
+)
 
 
 # ======================================================================
@@ -111,9 +111,8 @@ class SceneConfig(StrictFrozenBase):
                         # ATTRIBUTES
                         # ----------------------------------------------
 
-                        # TODO
-                        # ceiling_light: PanelLight
-                        # window_light: PanelLight
+                        ceiling_light: AreaLight
+                        window_light: AreaLight
 
 
                 class Physics(StrictFrozenBase):
