@@ -1,0 +1,7 @@
+{
+    "show_info": false,
+    "algorithm": 6,
+    "characteristic_length_min": 0,
+    "characteristic_length_max": 1e22,
+    "optimise": true
+}

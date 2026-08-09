@@ -1,0 +1,13 @@
+{
+    "angular_tolerance": 0.1,
+    "export_unit": "MM",
+    "import_unit": "MM",
+    "internal_unit": "MM",
+    "opt_3mf": {},
+    "opt_stl": {
+        "ascii": false,
+        "parallel": true,
+        "relative": true
+    },
+    "tolerance": 0.1
+}
