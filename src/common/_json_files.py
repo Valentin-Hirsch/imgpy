@@ -1,12 +1,12 @@
 # src/common/_json_files.py
-r"""JSON file structures.
+r"""JSON structures.
 
 This module provides the following types:
 
 - :class:`CadQueryParamsJSON`
 - :class:`GmshParamsJSON`
 
-These types define the structure of JSON files used throughout the
+These types define the structures of JSON files used throughout the
 project.
 
 """

@@ -32,26 +32,24 @@ def _yolo_box(
         images_dir: pathlib.Path,
         labels_dir: pathlib.Path,
         visualise_dir: pathlib.Path | None,
-        postconfig: JobInput
+        job_input: JobInput
 ) -> None:
-        r"""TODO docstring
+        r"""TODO docstring for function '_yolo_box'
 
-        TODO
-
-        Arguments:
-                pair (tuple[pathlib.Path, pathlib.Path]):
+        Args:
+                pair (`tuple[pathlib.Path, pathlib.Path]`):
                         TODO
-                images_dir (pathlib.Path):
+                images_dir (`pathlib.Path`):
                         TODO
-                labels_dir (pathlib.Path):
+                labels_dir (`pathlib.Path`):
                         TODO
-                visualise_dir (pathlib.Path | None):
+                visualise_dir (`pathlib.Path | None`):
                         TODO
-                postconfig (PostConfig):
+                job_input (`JobInput`):
                         TODO
 
         Raises:
-                FileNotFoundError:
+                `FileNotFoundError`:
                         Failed to read mask file.
 
         """
@@ -64,14 +62,14 @@ def _yolo_box(
         image_file = pair[0]
         mask_file = pair[1]
 
-        class_id = postconfig.class_id
+        class_id = job_input.class_id
         create_empty = typing.cast(
                 bool,
-                postconfig.additional_keys['create_empty']
+                job_input.additional_keys['create_empty']
         )
         threshold = typing.cast(
                 PositiveInt,
-                postconfig.additional_keys['threshold']
+                job_input.additional_keys['threshold']
         )
 
 
@@ -152,26 +150,45 @@ def _yolo_poly(
         images_dir: pathlib.Path,
         labels_dir: pathlib.Path,
         visualise_dir: pathlib.Path | None,
-        postconfig: JobInput
+        job_input: JobInput
 ) -> None:
-        r"""TODO docstring"""
+        r"""TODO docstring for function '_yolo_poly'
+
+        Args:
+                pair (`tuple[pathlib.Path, pathlib.Path]`):
+                        TODO
+                images_dir (`pathlib.Path`):
+                        TODO
+                labels_dir (`pathlib.Path`):
+                        TODO
+                visualise_dir (`pathlib.Path | None`):
+                        TODO
+                job_input (`JobInput`):
+                        TODO
+
+        Raises:
+                `FileNotFoundError`:
+                        Failed to read mask file.
+
+        """
 
         # TODO refactor (incl. docstring)
+
 
         # ---- Unpack arguments and job input ----
 
         image_file = pair[0]
         mask_file = pair[1]
 
-        class_id = postconfig.class_id
+        class_id = job_input.class_id
         create_empty = typing.cast(
                 bool,
-                postconfig.additional_keys['create_empty']
+                job_input.additional_keys['create_empty']
         )
-        simplify = typing.cast(float, postconfig.additional_keys['simplify'])  # TODO PositiveFloat?
+        simplify = typing.cast(float, job_input.additional_keys['simplify'])  # TODO2 PositiveFloat?
         threshold = typing.cast(
                 PositiveInt,
-                postconfig.additional_keys['threshold']
+                job_input.additional_keys['threshold']
         )
 
 
@@ -225,7 +242,7 @@ def _yolo_poly(
                 best_distance = np.inf
                 best_pair = None
 
-                # TODO whole block....
+                # TODO2 whole block....
                 for i in range(len(contours)):
                         a = contours[i][:, 0, :]
 
@@ -297,7 +314,7 @@ def _yolo_poly(
         # image_files = list(in_dir.glob(f'*_image{ext}'))
 
         # if not image_files:
-        #         err = f"TODO err msg"
+        #         err = f"TODO2 err msg"
         #         raise Exception(err)  # TOD oexc type
 
         # n_total = len(list(image_files))
@@ -309,7 +326,7 @@ def _yolo_poly(
 
 
         # for image_file in image_files:
-        #         mask_file = image_file.with_name(image_file.name.replace('image', 'mask'))  # TODO more elegant soln?
+        #         mask_file = image_file.with_name(image_file.name.replace('image', 'mask'))  # TODO2 more elegant soln?
 
         #         print('hi')
 
@@ -337,16 +354,14 @@ def yolo(
         out_dir:pathlib.Path,
         job_input: JobInput
 ) -> None:
-        r"""TODO docstring
+        r"""TODO docstring for function 'yolo'
 
-        TODO
-
-        Arguments:
-                in_dir (pathlib.Path):
+        Args:
+                in_dir (`pathlib.Path`):
                         Directory containg image and mask files.
-                out_dir (pathlib.Path):
+                out_dir (`pathlib.Path`):
                         Output base directory.
-                postconfig (PostConfig):
+                job_input (`JobInput`):
                         Job input.
 
         Raises:

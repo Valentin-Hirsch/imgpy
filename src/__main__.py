@@ -1,9 +1,8 @@
 # src/__main__.py
-"""
-Command-line entry point.
+r"""Command-line entry point.
 
-This module provides the toolkit's command line interface, parses
-command-line arguments, and dispatches execution to the selected mode.
+This module provides the toolkit's command line interface. It parses
+command-line arguments and dispatches execution to the selected mode.
 
 The following modes are available:
 

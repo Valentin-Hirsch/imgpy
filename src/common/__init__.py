@@ -3,7 +3,7 @@ r"""Project-wide utilities, types, and structures.
 
 This package provides the following symbols:
 
-**JSON file sturctures:**
+**JSON sturctures:**
 
 - :class:`CadQueryParamsJSON`
 - :class:`GmshParamsJSON`
