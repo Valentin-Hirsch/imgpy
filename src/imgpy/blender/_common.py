@@ -207,7 +207,9 @@ def _set_up_clutter(job_input: JobInput, fctx: FileContext) -> None:
                 )
                 mod_decimate.ratio = oof.decimate_ratio
 
-                obj.pass_index = 0
+                obj.pass_index = (
+                        0 if oof.class_id is None else oof.class_id + 1
+                )
 
                 # TODO temp
                 set_shading(obj, mode=oof.shade_mode)
@@ -415,7 +417,7 @@ def _set_up_protagonist(
         # ---- TODO misc ----
 
         fctx.register_protagonist(obj)
-        fctx.protagonist.pass_index = 255
+        fctx.protagonist.pass_index = job_input.protagonist.class_id + 1
 
         # TODO fix
         # mesh = typing.cast(bpy.types.Mesh, obj.data)

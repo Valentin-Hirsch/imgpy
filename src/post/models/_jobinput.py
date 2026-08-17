@@ -13,7 +13,7 @@ This module provides the :class:`JobInput` model.
 import pathlib
 import typing
 
-from src.common import NonNegativeInt, StrictFrozenBase
+from src.common import StrictFrozenBase
 
 
 # ======================================================================
@@ -25,10 +25,22 @@ class JobInput(StrictFrozenBase):
         r"""Post-processing job input file model."""
 
         additional_keys: dict[str, typing.Any]
-        r"""Additional keys."""
+        r"""Additional keys.
 
-        class_id: NonNegativeInt
-        r"""Protagonist class id."""
+        Recognised keys:
+
+        - `create_empty` (`bool`): write an empty label file for images
+          with no annotated objects.
+        - `min_component_area` (`int`): minimum pixel area of a
+          connected mask component to be treated as a valid instance
+          (filters out anti-aliasing noise at object borders).
+        - `n_val` (`int`), `n_test` (`int`), `seed`: train/val/test
+          split parameters.
+        - `simplify` (`float`, `yolo_poly` only): polygon simplification
+          factor passed to `cv2.approxPolyDP`.
+        - `visualise` (`bool`): write visualisation images.
+
+        """
 
         directory: pathlib.Path
         r"""Input image directory"""

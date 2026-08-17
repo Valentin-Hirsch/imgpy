@@ -10,6 +10,17 @@ This module provides the :func:`yolo` function.
 # IMPORTS
 # ======================================================================
 
+import os
+
+# Must be set before 'cv2' is imported: OpenCV's EXR codec is disabled
+# by default for security reasons and can only be toggled at import
+# time. Masks are stored as EXR (see 'data/blender/common/compositing.
+# blend') since 8-bit PNG mask output goes through Blender's display
+# color management (gamma/view-transform), which silently corrupts
+# the raw 'class_id + 1' pixel encoding for anything but the endpoint
+# values 0 and 255.
+os.environ.setdefault('OPENCV_IO_ENABLE_OPENEXR', '1')
+
 import pathlib
 import random
 import shutil
@@ -64,14 +75,13 @@ def _yolo_box(
         image_file = pair[0]
         mask_file = pair[1]
 
-        class_id = postconfig.class_id
         create_empty = typing.cast(
                 bool,
                 postconfig.additional_keys['create_empty']
         )
-        threshold = typing.cast(
+        min_component_area = typing.cast(
                 PositiveInt,
-                postconfig.additional_keys['threshold']
+                postconfig.additional_keys['min_component_area']
         )
 
 
@@ -84,49 +94,75 @@ def _yolo_box(
 
         label_file = labels_dir / f'{image_file.stem}.txt'
 
-        mask = cv2.imread(mask_file, cv2.IMREAD_GRAYSCALE)
+        mask_raw = cv2.imread(mask_file, cv2.IMREAD_UNCHANGED)
 
-        # 'mask' is a 2D NumPy array:
-        #
-        # mask = [
-        #         [uint8, ...], -> line of the image
-        #         ...
-        # ]
-
-        if mask is None:
+        if mask_raw is None:
                 err = f"failed to read mask: '{mask_file.as_posix()}'"
                 raise FileNotFoundError(err)
 
-        mask = (mask >= threshold).astype(np.uint8)
+        # 'mask' is a 2D NumPy array whose pixel values encode the
+        # object class (pixel value = 'class_id + 1'; '0' is
+        # background/unlabelled). The EXR mask stores this as an exact
+        # (integer-valued) float, so round rather than truncate.
+        #
+        # mask = [
+        #         [int, ...], -> line of the image
+        #         ...
+        # ]
 
-        if not np.any(mask):
+        if mask_raw.ndim == 3:
+                mask_raw = mask_raw[..., 0]
+
+        mask = np.rint(mask_raw).astype(np.int32)
+
+        shape: tuple[int, int] = mask.shape
+        height = shape[0]
+        width = shape[1]
+
+        annotations: list[str] = []
+        boxes: list[tuple[int, int, int, int]] = []
+
+        for value in np.unique(mask):
+                if value == 0:
+                        continue
+
+                class_id = int(value) - 1
+                class_mask = (mask == value).astype(np.uint8)
+
+                n_labels, _, stats, _ = cv2.connectedComponentsWithStats(
+                        class_mask,
+                        connectivity=8
+                )
+
+                for label in range(1, n_labels):
+                        area = stats[label, cv2.CC_STAT_AREA]
+
+                        if area < min_component_area:
+                                continue
+
+                        x_min = int(stats[label, cv2.CC_STAT_LEFT])
+                        y_min = int(stats[label, cv2.CC_STAT_TOP])
+                        x_max = x_min + int(stats[label, cv2.CC_STAT_WIDTH]) - 1
+                        y_max = y_min + int(stats[label, cv2.CC_STAT_HEIGHT]) - 1
+
+                        annotations.append(
+                                f'{class_id} '
+                                f'{(x_min + x_max + 1) / (2 * width):.6f} '
+                                f'{(y_min + y_max + 1) / (2 * height):.6f} '
+                                f'{(x_max - x_min + 1) / width:.6f} '
+                                f'{(y_max - y_min + 1) / height:.6f}\n'
+                        )
+                        boxes.append((x_min, y_min, x_max, y_max))
+
+        if not annotations:
                 if create_empty:
                         with label_file.open(mode='x', encoding='utf-8') as fp:
                                 fp.write('\n')
 
                 return
 
-        shape: tuple[int, int] = mask.shape
-        height = shape[0]
-        width = shape[1]
-
-        ys, xs = np.nonzero(mask)
-
-        x_min = int(xs.min())
-        x_max = int(xs.max())
-        y_min = int(ys.min())
-        y_max = int(ys.max())
-
-        annotation = (
-                f'{class_id} '
-                f'{(x_min + x_max + 1) / (2 * width):.6f} '
-                f'{(y_min + y_max + 1) / (2 * height):.6f} '
-                f'{(x_max - x_min + 1) / width:.6f} '
-                f'{(y_max - y_min + 1) / height:.6f}\n'
-        )
-
         with label_file.open(mode='x', encoding='utf-8') as fp:
-                fp.write(annotation)
+                fp.writelines(annotations)
 
 
         # ---- Visualisation ----
@@ -134,15 +170,19 @@ def _yolo_box(
         if visualise_dir is not None:
                 visualise_file = visualise_dir / f'{mask_file.stem}_box.png'
 
-                visualisation = cv2.cvtColor(mask * 255, cv2.COLOR_GRAY2BGR)
+                visualisation = cv2.cvtColor(
+                        ((mask > 0) * 255).astype(np.uint8),
+                        cv2.COLOR_GRAY2BGR
+                )
 
-                cv2.rectangle(
-                                visualisation,
-                                (x_min, y_min),
-                                (x_max, y_max),
-                                (0, 0, 255),  # red
-                                2
-                        )
+                for x_min, y_min, x_max, y_max in boxes:
+                        cv2.rectangle(
+                                        visualisation,
+                                        (x_min, y_min),
+                                        (x_max, y_max),
+                                        (0, 0, 255),  # red
+                                        2
+                                )
 
                 cv2.imwrite(visualise_file, visualisation)
 
@@ -163,16 +203,15 @@ def _yolo_poly(
         image_file = pair[0]
         mask_file = pair[1]
 
-        class_id = postconfig.class_id
         create_empty = typing.cast(
                 bool,
                 postconfig.additional_keys['create_empty']
         )
-        simplify = typing.cast(float, postconfig.additional_keys['simplify'])  # TODO PositiveFloat?
-        threshold = typing.cast(
+        min_component_area = typing.cast(
                 PositiveInt,
-                postconfig.additional_keys['threshold']
+                postconfig.additional_keys['min_component_area']
         )
+        simplify = typing.cast(float, postconfig.additional_keys['simplify'])  # TODO PositiveFloat?
 
 
         # ---- Copy image file ----
@@ -184,110 +223,101 @@ def _yolo_poly(
 
         label_file = labels_dir / f'{image_file.stem}.txt'
 
-        mask = cv2.imread(mask_file, cv2.IMREAD_GRAYSCALE)
+        mask_raw = cv2.imread(mask_file, cv2.IMREAD_UNCHANGED)
 
-        # 'mask' is a 2D NumPy array:
-        #
-        # mask = [
-        #         [uint8, ...], -> line of the image
-        #         ...
-        # ]
-
-        if mask is None:
+        if mask_raw is None:
                 err = f"failed to read mask: '{mask_file.as_posix()}'"
                 raise FileNotFoundError(err)
 
-        mask = (mask >= threshold).astype(np.uint8)
+        # 'mask' is a 2D NumPy array whose pixel values encode the
+        # object class (pixel value = 'class_id + 1'; '0' is
+        # background/unlabelled). The EXR mask stores this as an exact
+        # (integer-valued) float, so round rather than truncate.
+        #
+        # mask = [
+        #         [int, ...], -> line of the image
+        #         ...
+        # ]
 
-        if not np.any(mask):
+        if mask_raw.ndim == 3:
+                mask_raw = mask_raw[..., 0]
+
+        mask = np.rint(mask_raw).astype(np.int32)
+
+        shape: tuple[int, int] = mask.shape
+        height = shape[0]
+        width = shape[1]
+
+        annotations: list[str] = []
+        polygons: list[np.ndarray] = []
+
+        for value in np.unique(mask):
+                if value == 0:
+                        continue
+
+                class_id = int(value) - 1
+                class_mask = (mask == value).astype(np.uint8)
+
+                n_labels, labels = cv2.connectedComponents(
+                        class_mask,
+                        connectivity=8
+                )
+
+                for label in range(1, n_labels):
+                        component = (labels == label).astype(np.uint8)
+
+                        if int(component.sum()) < min_component_area:
+                                continue
+
+                        contours, _ = cv2.findContours(
+                                component,
+                                cv2.RETR_EXTERNAL,
+                                cv2.CHAIN_APPROX_NONE,
+                        )
+
+                        contour = max(contours, key=cv2.contourArea)
+
+                        epsilon = simplify * cv2.arcLength(contour, True)
+                        contour = cv2.approxPolyDP(contour, epsilon, True)
+
+                        coords: list[str] = []
+
+                        for x, y in contour[:, 0]:
+                                coords.append(f'{x / width:.6f}')
+                                coords.append(f'{y / height:.6f}')
+
+                        annotations.append(f'{class_id} ' + ' '.join(coords) + '\n')
+                        polygons.append(contour)
+
+        if not annotations:
                 if create_empty:
                         with label_file.open(mode='x', encoding='utf-8') as fp:
                                 fp.write('\n')
 
                 return
 
-        shape: tuple[int, int] = mask.shape
-        height = shape[0]
-        width = shape[1]
-
-        work = mask.copy()
-
-        while True:
-                contours, _ = cv2.findContours(
-                        work,
-                        cv2.RETR_EXTERNAL,
-                        cv2.CHAIN_APPROX_NONE
-                )
-
-                if len(contours) <= 1:
-                        break
-
-                best_distance = np.inf
-                best_pair = None
-
-                # TODO whole block....
-                for i in range(len(contours)):
-                        a = contours[i][:, 0, :]
-
-                        for j in range(i+1, len(contours)):
-                                b = contours[j][:, 0, :]
-
-                                diff = a[:, None] - b[None]
-                                distances = np.sum(diff * diff, axis=2)
-
-                                ia, ib = np.unravel_index(np.argmin(distances), distances.shape)
-
-                                if distances[ia, ib] < best_distance:
-                                        best_distance = distances[ia, ib]
-                                        best_pair = (a[ia], b[ib])
-
-                p1, p2 = best_pair
-                cv2.line(work, tuple(p1), tuple(p2), 1, 1)
-
-        contours, _ = cv2.findContours(
-                work,
-                cv2.RETR_EXTERNAL,
-                cv2.CHAIN_APPROX_NONE,
-        )
-
-        contour = contours[0]
-
-        epsilon = simplify * cv2.arcLength(contour, True)
-        contour = cv2.approxPolyDP(contour, epsilon, True)
-
-        coords: list[str] = []
-
-        for x, y in contour[:, 0]:
-                coords.append(f'{x / width:.6f}')
-                coords.append(f'{y / height:.6f}')
-
-        annotation = f'{class_id} ' + ' '.join(coords) + '\n'
-
         with label_file.open(mode='x', encoding='utf-8') as fp:
-                fp.write(annotation)
+                fp.writelines(annotations)
 
 
         # ---- Visualisation ----
 
         if visualise_dir is not None:
-                bridges_file = visualise_dir / f'{mask_file.stem}_bridges.png'
                 polygon_file = visualise_dir / f'{mask_file.stem}_polygon.png'
 
-                vis_bridges = cv2.cvtColor(mask * 255, cv2.COLOR_GRAY2BGR)
-                vis_polygon = cv2.cvtColor(mask * 255, cv2.COLOR_GRAY2BGR)
-
-                bridges = (work == 1) & (mask == 0)
-                vis_bridges[bridges] = [255, 255, 0]  # cyan
+                vis_polygon = cv2.cvtColor(
+                        ((mask > 0) * 255).astype(np.uint8),
+                        cv2.COLOR_GRAY2BGR
+                )
 
                 cv2.polylines(
                         vis_polygon,
-                        [contour],
+                        polygons,
                         True,
                         (0, 0, 255),  # red
                         2
                 )
 
-                cv2.imwrite(bridges_file, vis_bridges)
                 cv2.imwrite(polygon_file, vis_polygon)
 
 
@@ -421,7 +451,7 @@ def yolo(
         for image_file in in_dir.glob(f'*_image{ext}'):
                 prefix = image_file.stem[:-6]
 
-                mask_file = in_dir / f'{prefix}_mask.png'
+                mask_file = in_dir / f'{prefix}_mask.exr'
 
                 if not mask_file.is_file():
                         err = f"no mask for image: '{mask_file.as_posix()}'"

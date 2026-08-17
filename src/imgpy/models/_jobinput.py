@@ -17,7 +17,12 @@ import pydantic
 
 from ._blender_objects import RigidBody
 from ._lenses import PrimeLens, ZoomLens
-from src.common import PositiveFloat, PositiveInt, StrictFrozenBase
+from src.common import (
+        NonNegativeInt,
+        PositiveFloat,
+        PositiveInt,
+        StrictFrozenBase
+)
 
 
 # ======================================================================
@@ -44,6 +49,15 @@ class JobInput(StrictFrozenBase):
 
                 additional_keys: dict[str, typing.Any]
                 r"""TODO docstring"""
+
+                class_id: NonNegativeInt = 0
+                r"""YOLO class id used for the mask/object-index pass.
+
+                The rendered mask encodes this object's silhouette with
+                pixel value `class_id + 1` (pixel value `0` is reserved
+                for background/unlabelled objects).
+
+                """
 
                 file: pathlib.Path
                 r"""TODO docstring"""
@@ -134,6 +148,19 @@ class JobInput(StrictFrozenBase):
                         # ----------------------------------------------
                         # ATTRIBUTES
                         # ----------------------------------------------
+
+                        class_id: NonNegativeInt | None = None
+                        r"""YOLO class id used for the mask/object-index
+                        pass.
+
+                        If set, the rendered mask encodes this object's
+                        silhouette with pixel value `class_id + 1`
+                        (pixel value `0` is reserved for
+                        background/unlabelled objects). If `None`, the
+                        object is treated as an unlabelled
+                        background/distractor object (pixel value `0`).
+
+                        """
 
                         count: PositiveInt
                         r"""TODO docstring"""
