@@ -17,8 +17,8 @@ import os
 # time. Masks are stored as EXR (see 'data/blender/common/compositing.
 # blend') since 8-bit PNG mask output goes through Blender's display
 # color management (gamma/view-transform), which silently corrupts
-# the raw 'class_id + 1' pixel encoding for anything but the endpoint
-# values 0 and 255.
+# the raw object-instance-id pixel encoding for anything but the
+# endpoint values 0 and 255.
 os.environ.setdefault('OPENCV_IO_ENABLE_OPENEXR', '1')
 
 import pathlib
@@ -30,7 +30,7 @@ import cv2
 import numpy as np
 
 from .models import JobInput
-from src.common import NonNegativeInt, PositiveInt
+from src.common import NonNegativeInt, PositiveInt, load_json
 
 
 # ======================================================================
@@ -38,12 +38,50 @@ from src.common import NonNegativeInt, PositiveInt
 # ======================================================================
 
 
+def _load_class_map(in_dir: pathlib.Path) -> dict[int, int]:
+        r"""Load the object-instance-to-class mapping for a render job.
+
+        Each rendered mask encodes, per pixel, the unique object-index
+        ('pass_index') of the object instance visible there (see
+        'src.imgpy.blender.FileContext.register_instance'). This
+        mapping recovers the YOLO class id for each such instance id;
+        it is written by the rendering job (see 'src.imgpy._core.
+        render_images') next to the masks it describes.
+
+        Args:
+                in_dir (`pathlib.Path`):
+                        Directory containing image and mask files.
+
+        Returns:
+                `dict[int, int]`:
+                        Mapping of instance id ('pass_index') to
+                        `class_id`.
+
+        Raises:
+                `FileNotFoundError`:
+                        No class map file exists in `in_dir`.
+
+        """
+
+        class_map_file = in_dir / 'classes.json'
+
+        if not class_map_file.is_file():
+                err = f"no class map: '{class_map_file.as_posix()}'"
+                raise FileNotFoundError(err)
+
+        return {
+                int(instance_id): int(class_id)
+                for instance_id, class_id in load_json(class_map_file).items()
+        }
+
+
 def _yolo_box(
         pair: tuple[pathlib.Path, pathlib.Path],
         images_dir: pathlib.Path,
         labels_dir: pathlib.Path,
         visualise_dir: pathlib.Path | None,
-        job_input: JobInput
+        job_input: JobInput,
+        class_map: dict[int, int]
 ) -> None:
         r"""TODO docstring for function '_yolo_box'
 
@@ -58,6 +96,9 @@ def _yolo_box(
                         TODO
                 job_input (`JobInput`):
                         TODO
+                class_map (`dict[int, int]`):
+                        Mapping of mask instance id to `class_id` (see
+                        `_load_class_map`).
 
         Raises:
                 `FileNotFoundError`:
@@ -99,9 +140,14 @@ def _yolo_box(
                 raise FileNotFoundError(err)
 
         # 'mask' is a 2D NumPy array whose pixel values encode the
-        # object class (pixel value = 'class_id + 1'; '0' is
-        # background/unlabelled). The EXR mask stores this as an exact
-        # (integer-valued) float, so round rather than truncate.
+        # unique object *instance* visible at that pixel (pixel value =
+        # 'pass_index'; '0' is background/unlabelled). Each instance
+        # id maps to exactly one 'class_id' via 'class_map', so
+        # instances of the same class never share a pixel value -
+        # touching or overlapping objects of the same class remain
+        # distinct connected components below. The EXR mask stores
+        # this as an exact (integer-valued) float, so round rather
+        # than truncate.
         #
         # mask = [
         #         [int, ...], -> line of the image
@@ -124,7 +170,7 @@ def _yolo_box(
                 if value == 0:
                         continue
 
-                class_id = int(value) - 1
+                class_id = class_map[int(value)]
                 class_mask = (mask == value).astype(np.uint8)
 
                 n_labels, _, stats, _ = cv2.connectedComponentsWithStats(
@@ -190,7 +236,8 @@ def _yolo_poly(
         images_dir: pathlib.Path,
         labels_dir: pathlib.Path,
         visualise_dir: pathlib.Path | None,
-        job_input: JobInput
+        job_input: JobInput,
+        class_map: dict[int, int]
 ) -> None:
         r"""TODO docstring for function '_yolo_poly'
 
@@ -205,6 +252,9 @@ def _yolo_poly(
                         TODO
                 job_input (`JobInput`):
                         TODO
+                class_map (`dict[int, int]`):
+                        Mapping of mask instance id to `class_id` (see
+                        `_load_class_map`).
 
         Raises:
                 `FileNotFoundError`:
@@ -247,9 +297,14 @@ def _yolo_poly(
                 raise FileNotFoundError(err)
 
         # 'mask' is a 2D NumPy array whose pixel values encode the
-        # object class (pixel value = 'class_id + 1'; '0' is
-        # background/unlabelled). The EXR mask stores this as an exact
-        # (integer-valued) float, so round rather than truncate.
+        # unique object *instance* visible at that pixel (pixel value =
+        # 'pass_index'; '0' is background/unlabelled). Each instance
+        # id maps to exactly one 'class_id' via 'class_map', so
+        # instances of the same class never share a pixel value -
+        # touching or overlapping objects of the same class remain
+        # distinct connected components below. The EXR mask stores
+        # this as an exact (integer-valued) float, so round rather
+        # than truncate.
         #
         # mask = [
         #         [int, ...], -> line of the image
@@ -272,7 +327,7 @@ def _yolo_poly(
                 if value == 0:
                         continue
 
-                class_id = int(value) - 1
+                class_id = class_map[int(value)]
                 class_mask = (mask == value).astype(np.uint8)
 
                 n_labels, labels = cv2.connectedComponents(
@@ -450,6 +505,11 @@ def yolo(
                 visualise_dir = None
 
 
+        # ---- Load instance-to-class mapping ----
+
+        class_map = _load_class_map(in_dir)
+
+
         # ---- Find image-mask pairs and split into train-val-test ----
 
         match job_input.file_format:
@@ -522,7 +582,8 @@ def yolo(
                                                 images_dir,
                                                 labels_dir,
                                                 visualise_dir,
-                                                job_input
+                                                job_input,
+                                                class_map
                                         )
                         case 'yolo_poly':
                                 for pair in split_pairs:
@@ -531,7 +592,8 @@ def yolo(
                                                 images_dir,
                                                 labels_dir,
                                                 visualise_dir,
-                                                job_input
+                                                job_input,
+                                                class_map
                                         )
                         case _:
                                 err = f"invalid mode: '{mode}'"

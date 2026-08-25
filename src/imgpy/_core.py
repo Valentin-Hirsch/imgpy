@@ -24,7 +24,7 @@ from ._config import config
 from .blender import render, set_up
 from .models import JobInput
 from .protocols import Scene
-from src.common import load_json
+from src.common import load_json, save_json
 
 
 # ======================================================================
@@ -132,6 +132,16 @@ def render_images(
         bpy.ops.wm.open_mainfile(filepath=blend_file.as_posix())
 
         fctx = set_up(job_input, input_file.parent)
+
+        # Persist the object-instance-to-class mapping ('pass_index' ->
+        # 'class_id') next to the rendered masks, so that post-
+        # processing (a separate job, run against the render directory
+        # alone) can recover each mask pixel's class without relying on
+        # 'pass_index' directly encoding it (see 'FileContext.
+        # register_instance').
+        render_dir = job_dir / 'render'
+        render_dir.mkdir(parents=True, exist_ok=True)
+        save_json(fctx.instance_classes, render_dir / 'classes.json')
 
         scene.set_up(job_input=job_input, scene_config=scene_config, fctx=fctx)
 

@@ -54,8 +54,10 @@ class JobInput(StrictFrozenBase):
                 r"""YOLO class id used for the mask/object-index pass.
 
                 The rendered mask encodes this object's silhouette with
-                pixel value `class_id + 1` (pixel value `0` is reserved
-                for background/unlabelled objects).
+                a unique per-instance pixel value (`0` is reserved for
+                background/unlabelled objects); the instance's
+                `class_id` is recorded separately (see
+                `FileContext.register_instance` and `'classes.json'`).
 
                 """
 
@@ -153,10 +155,13 @@ class JobInput(StrictFrozenBase):
                         r"""YOLO class id used for the mask/object-index
                         pass.
 
-                        If set, the rendered mask encodes this object's
-                        silhouette with pixel value `class_id + 1`
-                        (pixel value `0` is reserved for
-                        background/unlabelled objects). If `None`, the
+                        If set, every instance of this clutter object
+                        (see `count`) is rendered with its own unique
+                        per-instance mask pixel value, each mapped back
+                        to this `class_id` (see `FileContext.
+                        register_instance` and `'classes.json'`); this
+                        keeps touching/overlapping instances of the same
+                        class separable in the mask. If `None`, the
                         object is treated as an unlabelled
                         background/distractor object (pixel value `0`).
 

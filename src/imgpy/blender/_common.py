@@ -208,7 +208,9 @@ def _set_up_clutter(job_input: JobInput, fctx: FileContext) -> None:
                 mod_decimate.ratio = oof.decimate_ratio
 
                 obj.pass_index = (
-                        0 if oof.class_id is None else oof.class_id + 1
+                        0
+                        if oof.class_id is None
+                        else fctx.register_instance(oof.class_id)
                 )
 
                 # TODO temp
@@ -245,9 +247,19 @@ def _set_up_clutter(job_input: JobInput, fctx: FileContext) -> None:
 
                 # ---- Instantiate ----
 
+                # 'obj.copy()' duplicates all of 'obj's properties,
+                # including 'pass_index'. Each copy is a separate
+                # physical object instance, so it is assigned its own
+                # unique 'pass_index' rather than inheriting 'obj's
+                # (see 'FileContext.register_instance').
                 for _ in range(oof.count-1):
                         o = obj.copy()
                         fctx.clutter_collection.objects.link(o)
+
+                        if oof.class_id is not None:
+                                o.pass_index = fctx.register_instance(
+                                        oof.class_id
+                                )
 
 
 def _load_blend_protagonist(
@@ -417,7 +429,9 @@ def _set_up_protagonist(
         # ---- TODO misc ----
 
         fctx.register_protagonist(obj)
-        fctx.protagonist.pass_index = job_input.protagonist.class_id + 1
+        fctx.protagonist.pass_index = fctx.register_instance(
+                job_input.protagonist.class_id
+        )
 
         # TODO fix
         # mesh = typing.cast(bpy.types.Mesh, obj.data)

@@ -40,7 +40,9 @@ class FileContext:
                 '_cycles_preferences',
                 '_cycles_settings',
                 '_file_output_node',
+                '_instance_classes',
                 '_job_input',
+                '_next_pass_index',
                 '_protagonist',
                 '_rbw_collection',
                 '_render_collection',
@@ -68,6 +70,11 @@ class FileContext:
                 self._render_layers_node = None
 
                 self._protagonist = None
+
+                # Pass index '0' is reserved for background/unlabelled
+                # objects (see 'register_instance').
+                self._next_pass_index = 1
+                self._instance_classes = {}
 
 
         # --------------------------------------------------------------
@@ -168,6 +175,24 @@ class FileContext:
                         raise RuntimeError(err)
 
                 return self._file_output_node
+
+
+        @property
+        def instance_classes(self) -> dict[int, int]:
+                r"""Object-instance-to-class mapping.
+
+                Maps each unique object-index (`pass_index`) value
+                assigned via `register_instance` to the YOLO class id
+                of the object instance it identifies. Background/
+                unlabelled objects (`pass_index` `0`) are not included.
+
+                Returns:
+                        `dict[int, int]`:
+                                Mapping of `pass_index` to `class_id`.
+
+                """
+
+                return self._instance_classes
 
 
         @property
@@ -315,6 +340,40 @@ class FileContext:
                         bpy.types.CompositorNodeRLayers,
                         self.compositing_node_group.nodes['render_layers']
                 )
+
+
+        def register_instance(self, class_id: int) -> int:
+                r"""Register a labelled object instance.
+
+                Each call allocates a new, globally unique object-index
+                (`pass_index`) value for one physical object instance
+                (protagonist or a single clutter object/copy) and
+                records its class id. Assigning a unique `pass_index`
+                per *instance* (rather than reusing the same value for
+                every instance of a class) ensures that the rendered
+                object-index mask distinguishes touching or overlapping
+                instances of the same class, instead of merging them
+                into a single mask region.
+
+                Args:
+                        class_id (`int`):
+                                YOLO class id of the object instance.
+
+                Returns:
+                        `int`:
+                                Unique `pass_index` value to assign to
+                                the object instance. Pass index `0` is
+                                never returned; it is reserved for
+                                background/unlabelled objects.
+
+                """
+
+                pass_index = self._next_pass_index
+                self._next_pass_index += 1
+
+                self._instance_classes[pass_index] = class_id
+
+                return pass_index
 
 
         def register_protagonist(self, obj: bpy.types.Object) -> None:
